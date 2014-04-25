@@ -1,0 +1,29 @@
+This copy of the GNU readline library has been compiled with emx+gcc
+using the emx 0.9c development tools. It can be used under
+OS/2, DOS and Win32.
+
+An up to date copy should always be available as
+
+  ftp://ftp.leo.org/pub/comp/os/os2/leo/gnu/devtools/gnureadl.zip
+
+It requires the emx 0.9c or newer runtime under OS/2 and RSXNT 1.40
+under Win32. Both can be found at
+
+  ftp://ftp.leo.org/pub/comp/os/os2/leo/gnu/emx+gcc/...
+
+The binos2 subdirectory contains an OS/2 DLL and import library as
+well as a generic a.out object library for OS/2, DOS and Win32
+emx executables. The binnt subdirectory contains a Win32 DLL
+and import library. Applications linked to the OS/2 or Win32 DLL 
+libraries always have to be linked with -Zcrtdll (OS/2) or
+compiled and linked with -Zcrtdll=crtrsxnt (Win32).
+
+Kai Uwe Rommel
+
+--
+/* Kai Uwe Rommel                   ARS Computer & Consulting GmbH *
+ * rommel@ars.de                                 Muenchen, Germany *
+ * rommel@leo.org (http://www.leo.org/pub/comp/os/os2 maintenance) */
+
+DOS ... is still a real mode only non-reentrant interrupt
+handler, and always will be.                -Russell Williams

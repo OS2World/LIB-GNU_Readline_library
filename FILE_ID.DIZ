@@ -1,0 +1,7 @@
+The GNU readline library, for emx+gcc.
+For OS/2, DOS and Win32.
+- version 2.1
+- requires emx 0.9c runtime or newer
+  under OS/2 and RSXNT 1.40 under Win32
+- compiled by rommel@ars.de
+- ftp://ftp.leo.org/pub/comp/os/os2/leo/...

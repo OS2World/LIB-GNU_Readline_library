@@ -1,0 +1,335 @@
+Only in new: FILE_ID.DIZ
+Only in new: README.EMX
+Only in new: patches.emx
+Only in new: Makefile.emx
+Only in new: gnureadl.def
+Only in new: config.h.emx
+Only in new: rl-win32.h
+Only in new: ntansi.c
+diff -cbr orig/display.c new/display.c
+*** orig/display.c	Mon Aug  4 21:54:22 1997
+--- new/display.c	Sun May 24 19:16:20 1998
+***************
+*** 46,51 ****
+--- 46,58 ----
+  #  include <pc.h>
+  #endif /* __GO32__ */
+  
++ #ifdef __RSXNT__
++ #ifdef putc
++ #undef putc
++ #endif
++ #define putc(c, f) pc_putc (c)
++ #endif
++ 
+  /* System-specific feature definitions and include files. */
+  #include "rldefs.h"
+  
+diff -cbr orig/input.c new/input.c
+*** orig/input.c	Wed Dec 11 17:59:34 1996
+--- new/input.c	Sun May 24 19:16:50 1998
+***************
+*** 196,206 ****
+--- 196,218 ----
+    return (0);
+  }
+  
++ #if defined(__EMX__)
++ int waiting_char = -1;
++ #endif
++ 
+  /* If a character is available to be read, then read it
+     and stuff it into IBUFFER.  Otherwise, just return. */
+  static void
+  rl_gather_tyi ()
+  {
++ #if defined (__EMX__)
++   if (isatty (0) && (waiting_char = _read_kbd(0, 0, 0)) != -1 && ibuffer_space ())
++     {
++       int i;
++       i = (*rl_getc_function) (rl_instream);
++       rl_stuff_char (i);
++     }
++ #else /*  __EMX__ */
+  #if defined (__GO32__)
+    char input;
+  
+***************
+*** 281,286 ****
+--- 293,299 ----
+  	rl_stuff_char (input);
+      }
+  #endif /* !__GO32__ */
++ #endif /* !__EMX__ */
+  }
+  
+  /* Is there input available to be read on the readline input file
+***************
+*** 301,306 ****
+--- 301,310 ----
+  int
+  _rl_input_available ()
+  {
++ #if defined (__EMX__)
++   if (isatty (0) && (waiting_char = _read_kbd(0, 0, 0)) != -1)
++     return 1;
++ #else /*  __EMX__ */
+  #if defined(HAVE_SELECT)
+    fd_set readfds, exceptfds;
+    struct timeval timeout;
+***************
+*** 326,331 ****
+--- 330,336 ----
+    if (ioctl (tty, FIONREAD, &chars_avail) == 0)
+      return (chars_avail);
+  #endif
++ #endif /* !__EMX__ */
+  
+    return 0;
+  }
+***************
+*** 391,396 ****
+--- 409,496 ----
+  {
+    int result, flags;
+    unsigned char c;
++ 
++ #if defined (__EMX__)
++   if (isatty (0))
++   {
++     int key;
++ 
++     if (waiting_char != -1)
++     {
++       key = waiting_char;
++       waiting_char = -1;
++     }
++     else
++     {
++ #ifdef __RSXNT__
++       pc_flush();
++ #endif
++       key = _read_kbd(0, 1, 0);
++     }
++ 
++     while (key == 0)
++     {
++       key |= (_read_kbd(0, 1, 0) << 8);
++       /* printf("<%04X> ", key);
++       fflush(stdout); */
++ 
++       switch (key)
++       {
++       case 0x4B00: /* left arrow */
++ 	key = 'B' - 64;
++ 	break;
++       case 0x4D00: /* right arrow */
++ 	key = 'F' - 64;
++ 	break;
++       case 0x7300: /* ctrl left arrow */
++ 	key = 27;
++ 	waiting_char = 'B';
++ 	break;
++       case 0x7400: /* ctrl right arrow */
++ 	key = 27;
++ 	waiting_char = 'F';
++ 	break;
++       case 0x4800: /* up arrow */
++ 	key = 'P' - 64;
++ 	break;
++       case 0x5000: /* down arrow */
++ 	key = 'N' - 64;
++ 	break;
++       case 0x8D00: /* ctrl up arrow */
++ 	key = 'R' - 64;
++ 	break;
++       case 0x9100: /* ctrl down arrow */
++ 	key = 'S' - 64;
++ 	break;
++       case 0x4700: /* home key */
++ 	key = 'A' - 64;
++ 	break;
++       case 0x4F00: /* end key */
++ 	key = 'E' - 64;
++ 	break;
++       case 0x7700: /* ctrl home key */
++ 	key = 27;
++ 	waiting_char = '<';
++ 	break;
++       case 0x7500: /* ctrl end key */
++ 	key = 27;
++ 	waiting_char = '>';
++ 	break;
++       case 0x5300: /* delete key */
++ 	key = 'D' - 64;
++ 	break;
++       case 0x5200: /* insert key */
++ 	key = 'V' - 64;
++ 	break;
++       default: /* ignore all other special keys, read next */
++ 	key = _read_kbd(0, 1, 0);
++ 	break;
++       }
++     }
++ 
++     return (key & 0xFF);
++   }
++ #endif /* __EMX__ */
+  
+  #if defined (__GO32__)
+    if (isatty (0))
+diff -cbr orig/readline.c new/readline.c
+*** orig/readline.c	Thu Apr  2 18:16:12 1998
+--- new/readline.c	Sun May 24 19:16:50 1998
+***************
+*** 54,64 ****
+  /* System-specific feature definitions and include files. */
+  #include "rldefs.h"
+  
+- #if defined (__EMX__)
+- #  define INCL_DOSPROCESS
+- #  include <os2.h>
+- #endif /* __EMX__ */
+- 
+  /* Some standard library routines. */
+  #include "readline.h"
+  #include "history.h"
+--- 54,59 ----
+***************
+*** 676,714 ****
+    return 0;
+  }
+  
+- #if defined (__EMX__)
+- static void
+- _emx_build_environ ()
+- {
+-   TIB *tibp;
+-   PIB *pibp;
+-   char *t, **tp;
+-   int c;
+- 
+-   DosGetInfoBlocks (&tibp, &pibp);
+-   t = pibp->pib_pchenv;
+-   for (c = 1; *t; c++)
+-     t += strlen (t) + 1;
+-   tp = environ = (char **)xmalloc ((c + 1) * sizeof (char *));
+-   t = pibp->pib_pchenv;
+-   while (*t)
+-     {
+-       *tp++ = t;
+-       t += strlen (t) + 1;
+-     }
+-   *tp = 0;
+- }
+- #endif /* __EMX__ */
+- 
+  /* Initialize the entire state of the world. */
+  static void
+  readline_initialize_everything ()
+  {
+- #if defined (__EMX__)
+-   if (environ == 0)
+-     _emx_build_environ ();
+- #endif
+- 
+    /* Find out if we are running in Emacs. */
+    running_in_emacs = get_env_value ("EMACS") != (char *)0;
+  
+--- 671,680 ----
+diff -cbr orig/readline.h new/readline.h
+*** orig/readline.h	Mon Sep  8 22:00:14 1997
+--- new/readline.h	Sun May 24 19:16:52 1998
+***************
+*** 24,32 ****
+--- 24,34 ----
+  #define _READLINE_H_
+  
+  #if defined (READLINE_LIBRARY)
++ #  include "rl-win32.h"
+  #  include "keymaps.h"
+  #  include "tilde.h"
+  #else
++ #  include <readline/rl-win32.h>
+  #  include <readline/keymaps.h>
+  #  include <readline/tilde.h>
+  #endif
+diff -cbr orig/rltty.c new/rltty.c
+*** orig/rltty.c	Thu Feb  6 15:14:12 1997
+--- new/rltty.c	Sun May 24 19:16:52 1998
+***************
+*** 577,582 ****
+--- 577,585 ----
+    if (_rl_enable_keypad)
+      _rl_control_keypad (0);
+  
++ #ifdef __RSXNT__
++   pc_flush();
++ #endif
+    fflush (rl_outstream);
+  
+    if (set_tty_settings (tty, &otio) < 0)
+diff -cbr orig/terminal.c new/terminal.c
+*** orig/terminal.c	Fri Jul 18 23:08:00 1997
+--- new/terminal.c	Sun May 24 19:16:52 1998
+***************
+*** 433,438 ****
+--- 433,477 ----
+    return 0;
+  }
+  
++ #ifdef __RSXNT__
++ 
++ /* ANSI implementation under NT */
++ 
++ static char buffer[4096];
++ static int idx;
++ 
++ void pc_flush(void)
++ {
++   if (idx > 0)
++     _rsxnt_write_with_ansi (buffer, idx);
++ 
++   idx = 0;
++ }
++ 
++ int pc_putc (int c)
++ {
++   if (idx == sizeof(buffer))
++     pc_flush();
++ 
++   buffer[idx++] = (char) c;
++ 
++   return c;
++ }
++ 
++ void pc_putx (char *s, int x)
++ {
++   for (; x; x--)
++     pc_putc(*s++);
++ }
++ 
++ #ifdef putc
++ #undef putc
++ #endif
++ #define putc(c, f) pc_putc (c)
++ #define fwrite(s, n, c, f) pc_putx(s, (n) * (c))
++ 
++ #endif
++ 
+  /* A function for the use of tputs () */
+  #ifdef _MINIX
+  void
+diff -cbr orig/tilde.c new/tilde.c
+*** orig/tilde.c	Fri Jul 18 23:08:40 1997
+--- new/tilde.c	Sun May 24 19:16:52 1998
+***************
+*** 18,23 ****
+--- 18,24 ----
+     You should have received a copy of the GNU General Public License
+     along with Readline; see the file COPYING.  If not, write to the Free
+     Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. */
++ #define READLINE_LIBRARY
+  
+  #if defined (HAVE_CONFIG_H)
+  #  include <config.h>

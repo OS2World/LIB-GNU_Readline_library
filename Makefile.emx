@@ -1,0 +1,149 @@
+## -*- text -*- ##
+# emx Makefile for the GNU readline library.
+# Copyright (C) 1994 Free Software Foundation, Inc.
+
+static:
+	$(MAKE) -f Makefile.emx readline.a readline.lib readline.exe \
+	CC="gcc -O" O=.o A=.a LFLAGS="-s" LIBS="readline.a"
+os2dll:
+	$(MAKE) -f Makefile.emx gnureadl.dll gnureadl.lib readline.exe \
+	CC="gcc -O -Zomf" O=.obj A=.lib \
+	LFLAGS="-s -Zcrtdll -Zstack 512" LIBS="gnureadl.lib" \
+	DLFLAGS="-s -Zdll -Zcrtdll"
+os2debug:
+	$(MAKE) -f Makefile.emx readline.a readline.exe \
+	CC="gcc -g" O=.o A=.a LIBS="readline.a"
+w32dll:
+	$(MAKE) -f Makefile.emx gnureadl.dll gnureadl.a readline.exe \
+	CC="gcc -Zwin32 -Zcrtdll=crtrsxnt -O" O=.o A=.a \
+	LFLAGS="-s -Zstack 512" LIBS="gnureadl.a" DLFLAGS="-s -Zdll"
+w32debug:
+	$(MAKE) -f Makefile.emx readline.a readline.exe \
+	CC="gcc -Zwin32 -g" O=.o A=.a LIBS="readline.a"
+
+CFLAGS = -I. -DHAVE_CONFIG_H
+
+.SUFFIXES: .c $O
+
+.c$O:
+	$(CC) -c $(CFLAGS) $<
+
+OBJECTS = readline$O vi_mode$O funmap$O keymaps$O parens$O search$O \
+	  rltty$O complete$O bind$O isearch$O display$O signals$O \
+	  util$O kill$O undo$O macro$O input$O callback$O terminal$O \
+	  nls$O xmalloc$O history$O histexpand$O histfile$O \
+	  histsearch$O shell$O tilde$O ntansi$O
+
+readline.exe: readline.h rldefs.h chardefs.h $(LIBS)
+	$(CC) $(CFLAGS) -o $@ examples/rl.c $(LFLAGS) $(LIBS) -ltermcap
+
+gnureadl.dll: $(OBJECTS) gnureadl.def
+	$(CC) $(CFLAGS) -o $@ $(OBJECTS) gnureadl.def $(DLFLAGS) -ltermcap
+
+readline.a: $(OBJECTS)
+	-cmd /c del $@
+	ar cr $@ $(OBJECTS)
+	ar s $@
+
+readline.lib: readline.a
+	emxomf readline.a
+
+gnureadl.lib: gnureadl.def
+	emximp -o $@ gnureadl.def
+
+gnureadl.a: gnureadl.dll
+	-cmd /c del $@
+	makelib gnureadl.dll -o $@
+
+config.h: config.h.emx
+	copy config.h.emx $@
+
+clean:
+	-cmd /c del *.o *.obj config.h
+
+# Dependencies
+bind$O: ansi_stdlib.h posixstat.h
+bind$O: rldefs.h config.h rlconf.h
+bind$O: readline.h keymaps.h chardefs.h tilde.h
+bind$O: history.h
+callback$O: rlconf.h
+callback$O: rldefs.h config.h rlconf.h
+callback$O: readline.h keymaps.h chardefs.h tilde.h
+complete$O: ansi_stdlib.h posixdir.h posixstat.h
+complete$O: rldefs.h config.h rlconf.h
+complete$O: readline.h keymaps.h chardefs.h tilde.h
+display$O: ansi_stdlib.h posixstat.h
+display$O: rldefs.h config.h rlconf.h
+display$O: tcap.h
+display$O: readline.h keymaps.h chardefs.h tilde.h
+display$O: history.h
+funmap$O: readline.h keymaps.h chardefs.h tilde.h
+funmap$O: rlconf.h ansi_stdlib.h
+funmap$O: config.h
+histexpand$O: ansi_stdlib.h
+histexpand$O: history.h histlib.h
+histexpand$O: config.h
+histfile$O: ansi_stdlib.h
+histfile$O: history.h histlib.h
+histfile$O: config.h
+history$O: ansi_stdlib.h
+history$O: history.h histlib.h
+history$O: config.h
+histsearch$O: ansi_stdlib.h
+histsearch$O: history.h histlib.h
+histsearch$O: config.h
+input$O: ansi_stdlib.h
+input$O: rldefs.h config.h rlconf.h
+input$O: readline.h keymaps.h chardefs.h tilde.h
+isearch$O: rldefs.h config.h rlconf.h
+isearch$O: readline.h keymaps.h chardefs.h tilde.h
+isearch$O: ansi_stdlib.h history.h
+keymaps$O: emacs_keymap.c vi_keymap.c
+keymaps$O: keymaps.h chardefs.h rlconf.h ansi_stdlib.h
+keymaps$O: readline.h keymaps.h chardefs.h tilde.h
+keymaps$O: config.h
+kill$O: ansi_stdlib.h
+kill$O: rldefs.h config.h rlconf.h
+kill$O: readline.h keymaps.h chardefs.h tilde.h
+kill$O: history.h
+macro$O: ansi_stdlib.h
+macro$O: rldefs.h config.h rlconf.h
+macro$O: readline.h keymaps.h chardefs.h tilde.h
+macro$O: history.h
+nls$O: ansi_stdlib.h
+nls$O: rldefs.h config.h rlconf.h
+parens$O: rlconf.h
+parens$O: config.h
+parens$O: readline.h keymaps.h chardefs.h tilde.h
+readline$O: readline.h keymaps.h chardefs.h tilde.h
+readline$O: rldefs.h config.h rlconf.h
+readline$O: history.h
+readline$O: posixstat.h ansi_stdlib.h posixjmp.h
+rltty$O: rldefs.h config.h rlconf.h
+rltty$O: rltty.h
+rltty$O: readline.h keymaps.h chardefs.h tilde.h
+search$O: rldefs.h config.h rlconf.h
+search$O: readline.h keymaps.h chardefs.h tilde.h
+search$O: ansi_stdlib.h history.h
+signals$O: rldefs.h config.h rlconf.h
+signals$O: readline.h keymaps.h chardefs.h tilde.h
+signals$O: history.h
+terminal$O: rldefs.h config.h rlconf.h
+terminal$O: tcap.h
+terminal$O: readline.h keymaps.h chardefs.h tilde.h
+terminal$O: history.h
+tilde$O: ansi_stdlib.h
+tilde$O: config.h
+tilde$O: tilde.h
+undo$O: ansi_stdlib.h
+undo$O: rldefs.h config.h rlconf.h
+undo$O: readline.h keymaps.h chardefs.h tilde.h
+undo$O: history.h
+util$O: posixjmp.h ansi_stdlib.h
+util$O: rldefs.h config.h rlconf.h
+util$O: readline.h keymaps.h chardefs.h tilde.h
+vi_mode$O: rldefs.h config.h rlconf.h
+vi_mode$O: readline.h keymaps.h chardefs.h tilde.h
+vi_mode$O: history.h ansi_stdlib.h
+xmalloc$O: config.h
+xmalloc$O: ansi_stdlib.h
